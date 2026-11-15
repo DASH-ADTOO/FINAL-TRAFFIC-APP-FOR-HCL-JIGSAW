@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hazratganj Signal Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one scrolling column of cards in the order of the experiment:
+   data in, watch it run, results, table, method. Road-sign type, asphalt neutrals. */
+:root{
+  --bg:#f1f0ec; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#6b6a65;
+  --line:#e1e0d9; --axis:#c3c2b7; --accent:#0e6b52; --accent-ink:#ffffff; --accent-soft:#e0efe9;
+  --fixed:#eb6834; --smart:#2a78d6;
+  --road:#4a4e55; --road-mark:#e9e7df; --car:#f6f5f1; --verge:#dfe4d6;
+  --go:#0ca30c; --wait:#fab219; --stop:#d03b3b;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#9a988f;
+    --line:#2c2c2a; --axis:#383835; --accent:#4cc79f; --accent-ink:#06261c; --accent-soft:#16332b;
+    --fixed:#d95926; --smart:#3987e5;
+    --road:#35383d; --road-mark:#8b8a84; --car:#e8e6df; --verge:#1f2a22;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d0d0d; --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#9a988f;
+  --line:#2c2c2a; --axis:#383835; --accent:#4cc79f; --accent-ink:#06261c; --accent-soft:#16332b;
+  --fixed:#d95926; --smart:#3987e5;
+  --road:#35383d; --road-mark:#8b8a84; --car:#e8e6df; --verge:#1f2a22;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 56px;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.1;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:clamp(30px,6vw,44px)}
+h2{font-size:26px}
+h3{font-size:19px;font-weight:600}
+p{margin:0}
+.eyebrow{font-family:var(--display);font-weight:600;letter-spacing:.12em;text-transform:uppercase;font-size:14px;color:var(--accent)}
+header{display:flex;flex-direction:column;gap:8px;padding:8px 0 4px}
+.sub{color:var(--ink2);max-width:62ch}
+.badges{display:flex;flex-wrap:wrap;gap:8px}
+.badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--axis);border-radius:999px;padding:3px 10px;font-size:13px;color:var(--ink2);background:var(--surface)}
+.badge b{color:var(--ink);font-weight:600}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.card > .lead{color:var(--ink2);max-width:68ch}
+.step{font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:720px){.two{grid-template-columns:minmax(0,1fr)}}
+.map svg{width:100%;height:auto;display:block;border-radius:10px}
+.roads{display:flex;flex-direction:column;gap:10px}
+.roadrow{display:grid;grid-template-columns:28px minmax(0,1fr) 92px;gap:8px;align-items:center}
+.key{width:28px;height:28px;border-radius:6px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:17px}
+label.small,.small{font-size:13px;color:var(--muted)}
+input[type=text],input[type=number]{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--axis);border-radius:8px;padding:7px 9px;min-width:0}
+input[type=number]{font-variant-numeric:tabular-nums;text-align:right}
+input:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.colhead{display:grid;grid-template-columns:28px minmax(0,1fr) 92px;gap:8px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.colhead span:last-child{text-align:right}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-weight:500;cursor:pointer;border-radius:8px;border:1px solid var(--axis);background:var(--surface);color:var(--ink);padding:7px 12px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.field{display:flex;flex-direction:column;gap:4px}
+.sims{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.sim{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sim canvas{width:100%;aspect-ratio:1;display:block;border-radius:10px;background:var(--verge)}
+.simhead{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:700;font-size:20px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.simnote{font-size:13px;color:var(--ink2);min-height:2.9em}
+.player{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.player input[type=range]{flex:1 1 160px;accent-color:var(--accent);min-width:120px}
+.clock{font-variant-numeric:tabular-nums;font-weight:600;min-width:9ch}
+.verdict{border-left:4px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 8px 8px 0;max-width:70ch}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:640px){.tiles{grid-template-columns:minmax(0,1fr)}}
+.tile{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.tile .t{font-size:13px;color:var(--muted)}
+.pair{display:flex;gap:16px;align-items:baseline;flex-wrap:wrap}
+.pair div{display:flex;flex-direction:column}
+.num{font-family:var(--display);font-weight:700;font-size:32px;line-height:1;font-variant-numeric:tabular-nums}
+.who{font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:5px}
+.delta{font-size:13px;color:var(--ink2)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.chart{position:relative}
+.chart svg{width:100%;height:auto;display:block;touch-action:pan-y}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--axis);border-radius:8px;padding:6px 9px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,.14);display:none;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tip div{display:flex;align-items:center;gap:6px}
+.bars{display:flex;flex-direction:column;gap:12px}
+.bgroup{display:flex;flex-direction:column;gap:3px}
+.bname{font-size:14px;font-weight:500}
+.brow{display:grid;grid-template-columns:46px minmax(0,1fr);gap:8px;align-items:center;font-size:12px;color:var(--ink2)}
+.btrack{display:flex;align-items:center;gap:6px;min-width:0}
+.bar{height:12px;border-radius:0 4px 4px 0;min-width:2px}
+.bval{font-variant-numeric:tabular-nums;color:var(--ink);font-size:13px;white-space:nowrap}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;max-height:420px;overflow-y:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:var(--surface);font-weight:600;color:var(--ink2);font-size:12px}
+thead tr:first-child th{text-align:center;font-size:13px;color:var(--ink)}
+td:first-child,th:first-child{text-align:left}
+td.sep,th.sep{border-left:2px solid var(--axis)}
+td.tot{font-weight:600}
+.gtable td:first-child{white-space:normal;min-width:130px}
+ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:70ch}
+li{color:var(--ink2)} li b{color:var(--ink);font-weight:600}
+textarea{width:100%;height:120px;font:12px ui-monospace,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--axis);border-radius:8px;padding:8px}
+.hide{display:none !important}
+.grid,.main{display:flex;flex-direction:column;gap:16px;min-width:0}
+.done{display:flex;flex-wrap:wrap;align-items:center;gap:10px;border:1px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:10px 12px}
+.done b{font-weight:600}
+/* Tablet: 641px to 1099px. Step 1 shows map and inputs side by side. */
+@media (min-width:641px) and (max-width:1099px){
+  .wrap{padding:24px 24px 56px}
+  .two.s1{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
+}
+/* Computer: 1100px and wider. Inputs stay in a side panel while results scroll. */
+@media (min-width:1100px){
+  .wrap{max-width:1360px;padding:28px 28px 64px}
+  .grid{display:grid;grid-template-columns:392px minmax(0,1fr);align-items:start}
+  .side{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;border-radius:14px}
+  .two.s1{grid-template-columns:minmax(0,1fr)}
+  .side .map{max-width:280px;margin:0 auto;width:100%}
+  .sims{gap:20px}
+}
+/* Phone: 640px and narrower. */
+@media (max-width:640px){
+  .card{padding:14px}
+  h2{font-size:23px}
+  .player .btns{width:100%}
+  .player .btns button{flex:1}
+  th,td{padding:6px 8px}
+}
+footer{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Signal Lab · one 4-way junction</div>
+  <h1 id="title">Hazratganj Chauraha, Lucknow</h1>
+  <p class="sub">The same traffic is sent through two signals: a normal fixed timer, and a smart signal that gives busier roads more green time. The results show which one keeps vehicles waiting less.</p>
+  <div class="badges">
+    <span class="badge" id="srcBadge"><b>Simulated data</b> not a real count</span>
+    <span class="badge">30-minute run</span>
+    <span class="badge">Same vehicles for both signals</span>
+  </div>
+</header>
+
+<div class="grid">
+<aside class="side">
+<section class="card" aria-labelledby="h-data">
+  <div class="step">Step 1</div>
+  <h2 id="h-data">Junction map and traffic counts</h2>
+  <p class="lead">Each road's count is the number of vehicles arriving at the junction in 15 minutes. Change a name or number and everything below updates.</p>
+  <div class="two s1">
+    <div class="map" id="map" role="img" aria-label="Junction map with traffic counts"></div>
+    <div class="roads">
+      <div class="field">
+        <label class="small" for="jname">Junction name</label>
+        <input type="text" id="jname" value="Hazratganj Chauraha, Lucknow">
+      </div>
+      <div class="colhead"><span></span><span>Road</span><span>Per 15 min</span></div>
+      <div id="roadRows" class="roads"></div>
+      <div class="field">
+        <label class="small" for="when">Where the numbers come from (day, time, who counted)</label>
+        <input type="text" id="when" value="Simulated: weekday evening rush, 6:00 to 6:30 pm">
+      </div>
+      <div>
+        <div class="small" style="margin-bottom:6px">Example traffic patterns (all simulated)</div>
+        <div class="btns" id="presets"></div>
+      </div>
+      <div class="btns">
+        <button id="reseed" type="button">Shuffle arrival times</button>
+        <span class="small" style="align-self:center">Same counts, different random gaps between vehicles</span>
+      </div>
+    </div>
+  </div>
+</section>
+</aside>
+<div class="main">
+<section class="card" aria-labelledby="h-watch">
+  <div class="step">Step 2</div>
+  <h2 id="h-watch">Watch both signals</h2>
+  <p class="lead">Each dot is a waiting vehicle. The number at the end of each road is its queue. Both junctions receive exactly the same vehicles at the same seconds.</p>
+  <div class="sims">
+    <div class="sim">
+      <div class="simhead"><span class="dot" style="background:var(--fixed)"></span>Fixed timer</div>
+      <canvas id="cvF" width="600" height="600" aria-label="Fixed timer junction animation"></canvas>
+      <div class="simnote" id="noteF"></div>
+    </div>
+    <div class="sim">
+      <div class="simhead"><span class="dot" style="background:var(--smart)"></span>Smart signal</div>
+      <canvas id="cvS" width="600" height="600" aria-label="Smart signal junction animation"></canvas>
+      <div class="simnote" id="noteS"></div>
+    </div>
+  </div>
+  <div class="player">
+    <button id="play" type="button" class="primary">Play</button>
+    <span class="clock" id="clock">00:00 / 30:00</span>
+    <input type="range" id="scrub" min="0" max="1799" value="0" aria-label="Time in the run">
+    <div class="btns" id="speeds" role="group" aria-label="Playback speed">
+      <button type="button" data-s="1">1×</button>
+      <button type="button" data-s="10" aria-pressed="true">10×</button>
+      <button type="button" data-s="60">60×</button>
+    </div>
+  </div>
+  <div class="done hide" id="done" role="status">
+    <span><b>Run finished.</b> The results spreadsheet is ready.</span>
+    <button type="button" class="primary" data-dl>Download spreadsheet (.xlsx)</button>
+    <span class="small" data-dlmsg></span>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="h-res">
+  <div class="step">Step 3</div>
+  <h2 id="h-res">Results: fixed vs smart</h2>
+  <p class="verdict" id="verdict"></p>
+  <div class="tiles" id="tiles"></div>
+
+  <h3>Vehicles waiting at the junction, minute by minute</h3>
+  <div class="legend">
+    <span><span class="dot" style="background:var(--fixed)"></span>Fixed timer</span>
+    <span><span class="dot" style="background:var(--smart)"></span>Smart signal</span>
+    <span class="small">All four roads added together</span>
+  </div>
+  <div class="chart" id="lineChart"><div class="tip" id="tip"></div></div>
+
+  <div class="two">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <h3>Average wait on each road (seconds)</h3>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <h3>Green time each road received</h3>
+      <div class="scroll"><table class="gtable" id="gtable"></table></div>
+      <p class="small">Every cycle is 120 seconds for both signals: 108 seconds of green shared between the four roads and 3 seconds of amber after each green.</p>
+    </div>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="h-table">
+  <div class="step">Step 4</div>
+  <h2 id="h-table">Minute-by-minute queues</h2>
+  <p class="lead">Vehicles waiting on each road at the end of every minute, under both signals. The spreadsheet has four sheets: summary, roads, queues by minute and green time per cycle.</p>
+  <div class="scroll"><table id="qtable"></table></div>
+  <div class="btns">
+    <button type="button" class="primary" data-dl>Download spreadsheet (.xlsx)</button>
+    <button id="copy" type="button">Copy table instead</button>
+    <span class="small" data-dlmsg style="align-self:center"></span>
+    <span class="small" id="copyMsg" style="align-self:center"></span>
+  </div>
+  <textarea id="csvBox" class="hide" readonly aria-label="Table as CSV text"></textarea>
+</section>
+
+</div>
+</div>
+
+<section class="card" aria-labelledby="h-how">
+  <h2 id="h-how">How the model works</h2>
+  <div class="two">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <h3>Rules both signals share</h3>
+      <ul>
+        <li><b>Arrivals.</b> Vehicles arrive at random moments, at the average rate set by each road's count. Both signals get the identical list of arrivals.</li>
+        <li><b>One road at a time.</b> Roads get green in the order N, E, S, W, then the cycle repeats every 120 seconds.</li>
+        <li><b>Leaving.</b> On green, nothing moves for the first 2 seconds (drivers reacting), then one vehicle leaves every second. No vehicle leaves on amber or red.</li>
+        <li><b>Waiting time.</b> For each vehicle: the second it leaves minus the second it arrived. Vehicles still queued at the end are counted too, with their wait so far.</li>
+      </ul>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <h3>The only difference</h3>
+      <ul>
+        <li><b>Fixed timer.</b> Every road gets 27 seconds of green in every cycle, busy or not.</li>
+        <li><b>Smart signal.</b> Before each cycle it works out each road's demand: vehicles left over after its last green, plus vehicles that arrived during the last cycle. It shares the 108 green seconds in proportion to demand.</li>
+        <li><b>Safety limits.</b> No road gets less than 10 seconds or more than 60 seconds, so a quiet road is never ignored.</li>
+        <li><b>First cycle.</b> The smart signal has seen no traffic yet, so it starts with the same 27 seconds each.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="h-honest">
+  <h2 id="h-honest">About the data and the limits</h2>
+  <ul>
+    <li><b>The starting numbers are simulated, not counted.</b> They were chosen to look like an evening rush: the two MG Marg arms are the busiest, Vidhan Sabha Marg is medium and Ashok Marg is the quietest. They are not measurements of the real junction.</li>
+    <li><b>How they were made realistic.</b> Vehicles arrive in uneven bunches (a Poisson pattern, the standard way to model random arrivals) instead of at perfectly even gaps, and the busiest road is set slightly above what a 27-second green can clear, which is what a jammed road means.</li>
+    <li><b>To use real data.</b> Count each road for 15 minutes at the same time on 2 or 3 days, take the average, and type it in above with the day and time. Count only with a teacher or parent, from a safe place off the road, and do not photograph faces or number plates.</li>
+    <li><b>What the model leaves out.</b> Turning vehicles, pedestrians, buses stopping, different vehicle sizes, and the signal ahead being blocked. Real results would differ; the comparison is fair because both signals face the same simplifications.</li>
+    <li><b>When smart does not help.</b> Try the "Equal on all roads" pattern: there is nothing to rebalance, so both signals perform about the same.</li>
+  </ul>
+</section>
+
+<footer>Model: 1-second steps, 1,800 seconds, random seed <span id="seedOut"></span>. Road names can be edited to model any 4-way junction.</footer>
+</div>
+
+<script>
+/* ---------- Traffic model (shared by the app and the tests) ---------- */
+const ROAD_KEYS = ['N', 'E', 'S', 'W'];
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* counts = vehicles per 15 minutes on each road. Returns, for every second,
+   how many vehicles arrive on each road. Arrivals are random (Poisson) around
+   the counted rate, so cars come in uneven bunches like real traffic. */
+function makeArrivals(counts, seconds, seed) {
+  const rnd = mulberry32(seed);
+  const out = counts.map(() => new Uint8Array(seconds));
+  for (let t = 0; t < seconds; t++) {
+    for (let r = 0; r < counts.length; r++) {
+      const rate = counts[r] / 900;           // vehicles per second
+      const L = Math.exp(-rate);
+      let k = 0, p = 1;
+      do { k++; p *= rnd(); } while (p > L);
+      out[r][t] = k - 1;
+    }
+  }
+  return out;
+}
+
+/* Share `total` seconds of green between 4 roads in proportion to weights,
+   keeping every road between gmin and gmax. Returns whole seconds. */
+function allocate(w, total, gmin, gmax) {
+  const n = w.length, g = new Array(n).fill(0), capped = new Set();
+  for (let iter = 0; iter < n; iter++) {
+    const free = [];
+    for (let i = 0; i < n; i++) if (!capped.has(i)) free.push(i);
+    let used = 0; capped.forEach(i => used += g[i]);
+    const budget = total - used - gmin * free.length;
+    let ws = 0; free.forEach(i => ws += w[i]);
+    free.forEach(i => { g[i] = gmin + (ws > 0 ? budget * w[i] / ws : budget / free.length); });
+    const over = free.filter(i => g[i] > gmax + 1e-9);
+    if (!over.length) break;
+    over.forEach(i => { g[i] = gmax; capped.add(i); });
+  }
+  const fl = g.map(Math.floor);
+  let left = total - fl.reduce((a, b) => a + b, 0);
+  const order = g.map((v, i) => [v - fl[i], i]).sort((a, b) => b[0] - a[0]);
+  for (let k = 0; k < order.length && left > 0; k++, left--) fl[order[k][1]]++;
+  return fl;
+}
+
+/* mode: 'fixed' or 'smart'. cfg: {cycle, amber, startLoss, headway, gmin, gmax} */
+function simulate(arrivals, mode, cfg) {
+  const n = arrivals.length, T = arrivals[0].length;
+  const totalGreen = cfg.cycle - n * cfg.amber;
+  const queues = arrivals.map(() => []);        // arrival second of each waiting vehicle
+  const leftover = new Array(n).fill(0);
+  let arrivedThisCycle = new Array(n).fill(0), arrivedLastCycle = null;
+  const waitSum = new Array(n).fill(0), served = new Array(n).fill(0), maxQ = new Array(n).fill(0);
+  const frames = [];                             // per-second state for the animation
+  const minuteQ = [];                            // queue on each road at the end of each minute
+  const greenLog = [];                           // green seconds given in each cycle
+  let t = 0;
+
+  function tick(greenRoad, light, canGo, credit) {
+    for (let r = 0; r < n; r++) {
+      const k = arrivals[r][t];
+      for (let j = 0; j < k; j++) queues[r].push(t);
+      arrivedThisCycle[r] += k;
+    }
+    let departed = 0;
+    if (canGo) {
+      credit.v += 1 / cfg.headway;
+      while (credit.v >= 1 && queues[greenRoad].length) {
+        const a = queues[greenRoad].shift();
+        waitSum[greenRoad] += t - a; served[greenRoad]++; departed++; credit.v -= 1;
+      }
+      if (!queues[greenRoad].length) credit.v = 0;
+    }
+    for (let r = 0; r < n; r++) if (queues[r].length > maxQ[r]) maxQ[r] = queues[r].length;
+    frames.push({ q: queues.map(q => q.length), road: greenRoad, light, departed });
+    t++;
+    if (t % 60 === 0) minuteQ.push(queues.map(q => q.length));
+  }
+
+  while (t < T) {
+    let greens;
+    if (mode === 'fixed' || !arrivedLastCycle) {
+      greens = allocate(new Array(n).fill(1), totalGreen, cfg.gmin, cfg.gmax);
+    } else {
+      const demand = leftover.map((l, i) => l + arrivedLastCycle[i]);
+      greens = allocate(demand, totalGreen, cfg.gmin, cfg.gmax);
+    }
+    greenLog.push(greens);
+    arrivedThisCycle = new Array(n).fill(0);
+    for (let r = 0; r < n && t < T; r++) {
+      const credit = { v: 0 };
+      for (let s = 0; s < greens[r] && t < T; s++) tick(r, 'G', s >= cfg.startLoss, credit);
+      leftover[r] = queues[r].length;
+      for (let s = 0; s < cfg.amber && t < T; s++) tick(r, 'A', false, credit);
+    }
+    arrivedLastCycle = arrivedThisCycle;
+  }
+
+  // Vehicles still waiting when the run ends count too (their wait so far).
+  const stillWaiting = queues.map(q => q.length);
+  const waitAll = waitSum.map((w, r) => w + queues[r].reduce((s, a) => s + (T - a), 0));
+  const vehicles = served.map((s, r) => s + stillWaiting[r]);
+  const avgWaitRoad = waitAll.map((w, r) => vehicles[r] ? w / vehicles[r] : 0);
+  const totV = vehicles.reduce((a, b) => a + b, 0);
+  const avgWait = totV ? waitAll.reduce((a, b) => a + b, 0) / totV : 0;
+  const avgGreen = greenLog[0].map((_, r) => greenLog.reduce((s, g) => s + g[r], 0) / greenLog.length);
+  return { frames, minuteQ, greenLog, avgGreen, served, stillWaiting, vehicles, maxQ, avgWaitRoad, avgWait };
+}
+
+
+
+</script>
+<script>
+(function(){
+'use strict';
+const CFG={cycle:120,amber:3,startLoss:2,headway:1,gmin:10,gmax:60};
+const T=1800;
+const PRESETS=[
+  {name:'Evening rush (uneven)',counts:[80,215,125,170],note:'Simulated: weekday evening rush, 6:00 to 6:30 pm'},
+  {name:'Equal on all roads',counts:[140,140,140,140],note:'Simulated: equal traffic on every road'},
+  {name:'Late night',counts:[20,45,25,35],note:'Simulated: late night, light traffic'},
+  {name:'Very heavy',counts:[150,230,190,220],note:'Simulated: festival-day crowding'}
+];
+const state={
+  names:['Ashok Marg','MG Marg (east arm)','Vidhan Sabha Marg','MG Marg (west arm)'],
+  counts:PRESETS[0].counts.slice(), seed:2026, preset:0,
+  F:null,S:null, t:600, playing:false, speed:10
+};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt=n=>Math.round(n).toLocaleString('en-IN');
+const mmss=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
+
+/* ---------- inputs ---------- */
+function buildInputs(){
+  $('roadRows').innerHTML=ROAD_KEYS.map((k,i)=>
+    '<div class="roadrow"><span class="key">'+k+'</span>'+
+    '<input type="text" id="name'+i+'" aria-label="Name of road '+k+'" value="'+esc(state.names[i])+'">'+
+    '<input type="number" id="count'+i+'" aria-label="Vehicles per 15 minutes on road '+k+'" min="0" max="400" step="5" value="'+state.counts[i]+'"></div>').join('');
+  ROAD_KEYS.forEach((k,i)=>{
+    $('name'+i).addEventListener('input',e=>{state.names[i]=e.target.value||('Road '+k);renderStatic();});
+    $('count'+i).addEventListener('input',e=>{
+      let v=parseInt(e.target.value,10); if(!isFinite(v)||v<0)v=0; if(v>400)v=400;
+      state.counts[i]=v; state.preset=-1; markSource(); run();
+    });
+    $('count'+i).addEventListener('change',e=>{e.target.value=state.counts[i];});
+  });
+  $('presets').innerHTML=PRESETS.map((p,i)=>'<button type="button" data-p="'+i+'">'+p.name+'</button>').join('');
+  $('presets').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    const p=PRESETS[+b.dataset.p]; state.preset=+b.dataset.p; state.counts=p.counts.slice();
+    state.counts.forEach((c,i)=>$('count'+i).value=c); $('when').value=p.note; markSource(); run();
+  });
+  $('jname').addEventListener('input',e=>{$('title').textContent=e.target.value||'4-way junction';});
+  $('when').addEventListener('input',markSource);
+  $('reseed').addEventListener('click',()=>{state.seed=(state.seed*31+17)%100000;run();});
+  window.addEventListener('resize',()=>{clearTimeout(buildInputs.z);buildInputs.z=setTimeout(drawAll,150);});
+}
+function markSource(){
+  const sim=/simulat/i.test($('when').value);
+  $('srcBadge').innerHTML=sim?'<b>Simulated data</b> not a real count':'<b>Counted data</b> '+esc($('when').value.slice(0,60));
+  document.querySelectorAll('#presets button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===state.preset)));
+}
+
+/* ---------- run both signals on the same arrivals ---------- */
+function run(){
+  const arr=makeArrivals(state.counts,T,state.seed);
+  state.F=simulate(arr,'fixed',CFG); state.S=simulate(arr,'smart',CFG);
+  // repeat with 20 other random arrival patterns to check the result is not luck
+  const ch=[];
+  for(let k=1;k<=20;k++){
+    const a=makeArrivals(state.counts,T,state.seed+k*101);
+    const f=simulate(a,'fixed',CFG).avgWait,s=simulate(a,'smart',CFG).avgWait;
+    if(f>0)ch.push((f-s)/f*100);
+  }
+  state.repeat=ch.length?{mean:ch.reduce((a,b)=>a+b,0)/ch.length,min:Math.min.apply(null,ch),max:Math.max.apply(null,ch)}:null;
+  $('seedOut').textContent=state.seed; showDone(false);
+  renderStatic(); renderResults(); drawAll();
+}
+
+/* ---------- junction map (SVG) ---------- */
+function renderStatic(){
+  const n=state.names,c=state.counts,road=css('--road'),mark=css('--road-mark'),ink=css('--ink'),ink2=css('--ink2'),verge=css('--verge');
+  const lab=(x,y,anchor,i)=>
+    '<text x="'+x+'" y="'+y+'" text-anchor="'+anchor+'" font-family="Barlow Condensed,Arial Narrow,sans-serif" font-weight="700" font-size="15" fill="'+ink+'">'+ROAD_KEYS[i]+' · '+esc(n[i].length>18?n[i].slice(0,17)+'…':n[i])+'</text>'+
+    '<text x="'+x+'" y="'+(y+17)+'" text-anchor="'+anchor+'" font-family="Barlow,sans-serif" font-size="13" fill="'+ink2+'">'+c[i]+' veh. in 15 min</text>';
+  const arrow=(x,y,rot)=>'<path d="M0 -9 L6 3 L2 3 L2 10 L-2 10 L-2 3 L-6 3 Z" fill="'+mark+'" transform="translate('+x+' '+y+') rotate('+rot+')"/>';
+  $('map').innerHTML='<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">'+
+    '<rect width="400" height="400" fill="'+verge+'"/>'+
+    '<rect x="160" y="0" width="80" height="400" fill="'+road+'"/><rect x="0" y="160" width="400" height="80" fill="'+road+'"/>'+
+    '<g stroke="'+mark+'" stroke-width="2" stroke-dasharray="10 9"><path d="M200 0V150M200 250V400M0 200H150M250 200H400"/></g>'+
+    '<g stroke="'+mark+'" stroke-width="3"><path d="M200 156H240M160 244H200M244 200V240M156 160V200"/></g>'+
+    arrow(220,120,180)+arrow(180,280,0)+arrow(280,220,270)+arrow(120,180,90)+
+    lab(248,24,'start',0)+lab(392,268,'end',1)+lab(8,366,'start',2)+lab(8,118,'start',3)+
+    '<g transform="translate(34 40)"><path d="M0 -18 L7 6 L0 1 L-7 6 Z" fill="'+ink+'"/><text y="22" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="700" font-size="14" fill="'+ink+'">N</text></g>'+
+    '</svg>';
+}
+
+/* ---------- animation ---------- */
+const ARMS=[{d:[0,-1],l:[1,0]},{d:[1,0],l:[0,1]},{d:[0,1],l:[-1,0]},{d:[-1,0],l:[0,-1]}];
+function drawSim(cv,R,tf){
+  const g=cv.getContext('2d'),S=cv.width,c=S/2,hw=S*0.13;
+  tf=Math.max(0,Math.min(T-1,tf)); const t=Math.floor(tf),fr=R.frames[t];
+  const road=css('--road'),mark=css('--road-mark'),car=css('--car'),ink=css('--ink'),surf=css('--surface');
+  g.clearRect(0,0,S,S);
+  g.fillStyle=road; g.fillRect(c-hw,0,hw*2,S); g.fillRect(0,c-hw,S,hw*2);
+  g.strokeStyle=mark; g.lineWidth=2; g.setLineDash([12,12]);
+  g.beginPath(); g.moveTo(c,0);g.lineTo(c,c-hw-8);g.moveTo(c,c+hw+8);g.lineTo(c,S);g.moveTo(0,c);g.lineTo(c-hw-8,c);g.moveTo(c+hw+8,c);g.lineTo(S,c);g.stroke();
+  g.setLineDash([]);
+  const k=S/Math.max(120,cv.clientWidth||S),fs=Math.max(26,Math.min(64,15*k)),bw=fs*1.9,bh=fs*1.4,ed=bh/2+8;
+  const cs=hw*0.3,pitch=cs*1.45,maxRows=Math.max(1,Math.floor((c-hw-bh-34)/pitch));
+  ARMS.forEach((a,r)=>{
+    const q=fr.q[r],shown=Math.min(q,maxRows*2);
+    // stop line
+    g.strokeStyle=mark; g.lineWidth=4; g.beginPath();
+    g.moveTo(c+a.d[0]*(hw+3),c+a.d[1]*(hw+3)); g.lineTo(c+a.d[0]*(hw+3)+a.l[0]*hw,c+a.d[1]*(hw+3)+a.l[1]*hw); g.stroke();
+    g.fillStyle=car;
+    for(let i=0;i<shown;i++){
+      const lane=i%2,row=Math.floor(i/2),off=hw*(lane?0.73:0.27),dist=hw+12+cs/2+row*pitch;
+      const x=c+a.d[0]*dist+a.l[0]*off,y=c+a.d[1]*dist+a.l[1]*off;
+      rr(g,x-cs/2,y-cs/2,cs,cs,4);
+    }
+    // vehicle crossing the junction
+    if(fr.departed>0&&fr.road===r){
+      const p=tf-t,dist=hw-p*hw*2,off=hw*0.5;
+      g.fillStyle=car; rr(g,c+a.d[0]*dist+a.l[0]*off-cs/2,c+a.d[1]*dist+a.l[1]*off-cs/2,cs,cs,4);
+    }
+    // signal lamp
+    const lit=fr.road===r?(fr.light==='G'?css('--go'):css('--wait')):css('--stop');
+    const lx=c+a.d[0]*(hw+22)+a.l[0]*(hw+22),ly=c+a.d[1]*(hw+22)+a.l[1]*(hw+22);
+    g.fillStyle=surf; g.beginPath(); g.arc(lx,ly,17,0,7); g.fill();
+    g.fillStyle=lit; g.beginPath(); g.arc(lx,ly,fr.road===r?13:9,0,7); g.fill();
+    // queue count and road letter
+    const ex=c+a.d[0]*(c-ed)-a.l[0]*hw*0.5,ey=c+a.d[1]*(c-ed)-a.l[1]*hw*0.5;
+    g.fillStyle=surf; rr(g,ex-bw/2,ey-bh/2,bw,bh,8);
+    g.fillStyle=ink; g.textAlign='center'; g.textBaseline='middle';
+    g.font='700 '+fs+'px "Barlow Condensed",Arial,sans-serif'; g.fillText(String(q),ex,ey+1);
+    const kx=c+a.d[0]*(c-ed)+a.l[0]*hw*0.5,ky=c+a.d[1]*(c-ed)+a.l[1]*hw*0.5;
+    g.fillStyle=mark; g.font='700 '+Math.round(fs*0.85)+'px "Barlow Condensed",Arial,sans-serif'; g.fillText(ROAD_KEYS[r],kx,ky+1);
+  });
+  return fr;
+}
+function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();g.fill();}
+function note(R,fr,t){
+  const cyc=Math.min(R.greenLog.length-1,Math.floor(t/CFG.cycle)),gr=R.greenLog[cyc];
+  const tot=fr.q.reduce((a,b)=>a+b,0);
+  return '<b>'+(fr.light==='G'?'Green':'Amber')+':</b> '+ROAD_KEYS[fr.road]+' · '+esc(state.names[fr.road])+
+    '<br>This cycle\'s green: '+ROAD_KEYS.map((k,i)=>k+' '+gr[i]+'s').join(', ')+' · '+tot+' waiting';
+}
+function drawAll(){
+  if(!state.F)return;
+  state.t=Math.max(0,Math.min(T-1,state.t));
+  const fF=drawSim($('cvF'),state.F,state.t),fS=drawSim($('cvS'),state.S,state.t),ti=Math.min(T-1,Math.floor(state.t));
+  $('noteF').innerHTML=note(state.F,fF,ti); $('noteS').innerHTML=note(state.S,fS,ti);
+  $('clock').textContent=mmss(state.t)+' / 30:00'; $('scrub').value=ti;
+}
+let last=0;
+function loop(ts){
+  if(!state.playing)return;
+  const dt=Math.max(0,Math.min(0.1,(ts-last)/1000)); last=ts;
+  state.t+=dt*state.speed;
+  if(state.t>=T-1){state.t=T-1;setPlaying(false);showDone(true);}
+  drawAll(); if(state.playing)requestAnimationFrame(loop);
+}
+function setPlaying(p){
+  state.playing=p; $('play').textContent=p?'Pause':'Play';
+  if(p){ if(state.t>=T-1){state.t=0;showDone(false);} last=performance.now(); requestAnimationFrame(loop); }
+}
+$('play').addEventListener('click',()=>setPlaying(!state.playing));
+$('scrub').addEventListener('input',e=>{state.t=+e.target.value;showDone(state.t>=T-1);drawAll();});
+$('speeds').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return; state.speed=+b.dataset.s;
+  document.querySelectorAll('#speeds button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+});
+
+/* ---------- results ---------- */
+function renderResults(){
+  const F=state.F,S=state.S,sum=a=>a.reduce((x,y)=>x+y,0);
+  const change=F.avgWait>0?(F.avgWait-S.avgWait)/F.avgWait*100:0;
+  const rep=state.repeat;
+  let v;
+  if(sum(F.vehicles)===0) v='<b>No vehicles arrived.</b> Enter a count above zero for at least one road.';
+  else if(change>=10) v='<b>The smart signal cut the average wait by '+Math.round(change)+'%</b>, from '+Math.round(F.avgWait)+' to '+Math.round(S.avgWait)+' seconds per vehicle. It moved green time from quieter roads to the busiest ones.';
+  else if(change<=-10) v='<b>The smart signal was worse here: the average wait rose by '+Math.round(-change)+'%</b>, from '+Math.round(F.avgWait)+' to '+Math.round(S.avgWait)+' seconds per vehicle.';
+  else v='<b>Almost no difference in this run</b> ('+Math.round(F.avgWait)+' vs '+Math.round(S.avgWait)+' seconds per vehicle). When roads are about equally busy, or traffic is light, there is little green time worth moving.';
+  if(rep&&sum(F.vehicles)>0) v+=' Repeating the test with 20 other random arrival patterns, the change in average wait ranged from '+signed(rep.min)+' to '+signed(rep.max)+', averaging '+signed(rep.mean)+'.';
+  $('verdict').innerHTML=v;
+
+  const tile=(t,f,s,unit,d)=>'<div class="tile"><div class="t">'+t+'</div><div class="pair">'+
+    '<div><span class="num">'+f+'</span><span class="who"><span class="dot" style="background:var(--fixed)"></span>Fixed'+unit+'</span></div>'+
+    '<div><span class="num">'+s+'</span><span class="who"><span class="dot" style="background:var(--smart)"></span>Smart'+unit+'</span></div></div>'+
+    '<div class="delta">'+d+'</div></div>';
+  const mqF=Math.max.apply(null,F.maxQ),mqS=Math.max.apply(null,S.maxQ);
+  const wF=sum(F.stillWaiting),wS=sum(S.stillWaiting);
+  $('tiles').innerHTML=
+    tile('Average wait per vehicle',Math.round(F.avgWait),Math.round(S.avgWait),' · seconds',fmt(sum(F.vehicles))+' vehicles arrived in 30 minutes')+
+    tile('Longest queue on any road',mqF,mqS,' · vehicles','Fixed: '+ROAD_KEYS[F.maxQ.indexOf(mqF)]+' road. Smart: '+ROAD_KEYS[S.maxQ.indexOf(mqS)]+' road.')+
+    tile('Still waiting when the run ends',wF,wS,' · vehicles','Cleared: '+fmt(sum(F.served))+' fixed, '+fmt(sum(S.served))+' smart');
+
+  lineChart(F.minuteQ.map(sum),S.minuteQ.map(sum));
+
+  const mx=Math.max(1,Math.max.apply(null,F.avgWaitRoad.concat(S.avgWaitRoad)));
+  $('bars').innerHTML=ROAD_KEYS.map((k,i)=>{
+    const row=(lbl,val,col)=>'<div class="brow"><span>'+lbl+'</span><div class="btrack"><div class="bar" style="width:'+(val/mx*82).toFixed(1)+'%;background:var('+col+')" title="'+lbl+': '+Math.round(val)+' s"></div><span class="bval">'+Math.round(val)+' s</span></div></div>';
+    return '<div class="bgroup"><div class="bname">'+k+' · '+esc(state.names[i])+'</div>'+row('Fixed',F.avgWaitRoad[i],'--fixed')+row('Smart',S.avgWaitRoad[i],'--smart')+'</div>';
+  }).join('');
+
+  $('gtable').innerHTML='<thead><tr><th>Road</th><th>Fixed</th><th>Smart (average)</th><th>Smart (range)</th></tr></thead><tbody>'+
+    ROAD_KEYS.map((k,i)=>{const col=S.greenLog.map(g=>g[i]);
+      return '<tr><td>'+k+' · '+esc(state.names[i])+'</td><td>'+F.greenLog[0][i]+' s</td><td>'+S.avgGreen[i].toFixed(0)+' s</td><td>'+Math.min.apply(null,col)+' to '+Math.max.apply(null,col)+' s</td></tr>';}).join('')+'</tbody>';
+
+  const head='<thead><tr><th></th><th colspan="5" class="sep">Fixed timer</th><th colspan="5" class="sep">Smart signal</th></tr><tr><th>Minute</th>'+
+    [0,1].map(()=>ROAD_KEYS.map((k,i)=>'<th'+(i===0?' class="sep"':'')+'>'+k+'</th>').join('')+'<th>Total</th>').join('')+'</tr></thead>';
+  $('qtable').innerHTML=head+'<tbody>'+F.minuteQ.map((q,m)=>'<tr><td>'+(m+1)+'</td>'+
+    q.map((x,i)=>'<td'+(i===0?' class="sep"':'')+'>'+x+'</td>').join('')+'<td class="tot">'+sum(q)+'</td>'+
+    S.minuteQ[m].map((x,i)=>'<td'+(i===0?' class="sep"':'')+'>'+x+'</td>').join('')+'<td class="tot">'+sum(S.minuteQ[m])+'</td></tr>').join('')+'</tbody>';
+}
+function signed(x){const r=Math.round(x);return r>0?r+'% shorter':r<0?(-r)+'% longer':'no change';}
+
+function lineChart(f,s){
+  const W=Math.max(320,Math.min(900,$('lineChart').clientWidth||720)),H=270,L=36,Rr=84,Tp=14,B=34,pw=W-L-Rr,ph=H-Tp-B,n=f.length;
+  const rawMax=Math.max(4,Math.max.apply(null,f.concat(s)));
+  const stepC=[1,2,5,10,20,25,50,100,200,500],step=stepC.find(x=>rawMax/x<=5)||1000,ymax=Math.ceil(rawMax/step)*step;
+  const X=i=>L+pw*i/(n-1),Y=v=>Tp+ph*(1-v/ymax);
+  const ink2=css('--ink2'),ink=css('--ink'),grid=css('--line'),axis=css('--axis'),cf=css('--fixed'),cS=css('--smart'),surf=css('--surface');
+  let o='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of vehicles waiting each minute, fixed timer versus smart signal">';
+  for(let v=0;v<=ymax;v+=step){
+    o+='<line x1="'+L+'" x2="'+(L+pw)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="'+(v===0?axis:grid)+'" stroke-width="1"/>'+
+       '<text x="'+(L-8)+'" y="'+(Y(v)+4)+'" text-anchor="end" font-size="12" fill="'+ink2+'" font-family="Barlow,sans-serif">'+v+'</text>';
+  }
+  for(let m=5;m<=n;m+=5) o+='<text x="'+X(m-1)+'" y="'+(H-14)+'" text-anchor="middle" font-size="12" fill="'+ink2+'" font-family="Barlow,sans-serif">'+m+(m===n?' min':'')+'</text>';
+  const path=a=>a.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join('');
+  o+='<path d="'+path(f)+'" fill="none" stroke="'+cf+'" stroke-width="2" stroke-linejoin="round"/>'+
+     '<path d="'+path(s)+'" fill="none" stroke="'+cS+'" stroke-width="2" stroke-linejoin="round"/>';
+  let yf=Y(f[n-1]),ys=Y(s[n-1]);
+  if(Math.abs(yf-ys)<16){const mid=(yf+ys)/2; if(f[n-1]>=s[n-1]){yf=mid-8;ys=mid+8;}else{yf=mid+8;ys=mid-8;}}
+  const end=(y,v,col,name,yl)=>'<circle cx="'+X(n-1)+'" cy="'+y+'" r="4.5" fill="'+col+'" stroke="'+surf+'" stroke-width="2"/>'+
+    '<text x="'+(X(n-1)+10)+'" y="'+(yl+4)+'" font-size="13" font-weight="600" fill="'+ink+'" font-family="Barlow,sans-serif">'+name+' '+v+'</text>';
+  o+=end(Y(f[n-1]),f[n-1],cf,'Fixed',yf)+end(Y(s[n-1]),s[n-1],cS,'Smart',ys);
+  o+='<g id="hov" style="display:none"><line id="hl" y1="'+Tp+'" y2="'+(Tp+ph)+'" stroke="'+axis+'" stroke-width="1"/>'+
+     '<circle id="hf" r="4.5" fill="'+cf+'" stroke="'+surf+'" stroke-width="2"/><circle id="hs" r="4.5" fill="'+cS+'" stroke="'+surf+'" stroke-width="2"/></g>'+
+     '<rect id="hit" x="'+L+'" y="'+Tp+'" width="'+pw+'" height="'+ph+'" fill="transparent"/></svg>';
+  const box=$('lineChart'); const old=box.querySelector('svg'); if(old)old.remove();
+  box.insertAdjacentHTML('afterbegin',o);
+  const svg=box.querySelector('svg'),tip=$('tip'),hov=svg.querySelector('#hov');
+  const move=e=>{
+    const r=svg.getBoundingClientRect(),sx=(e.clientX-r.left)/r.width*W;
+    const i=Math.max(0,Math.min(n-1,Math.round((sx-L)/pw*(n-1))));
+    hov.style.display=''; svg.querySelector('#hl').setAttribute('x1',X(i)); svg.querySelector('#hl').setAttribute('x2',X(i));
+    const a=svg.querySelector('#hf'),b=svg.querySelector('#hs');
+    a.setAttribute('cx',X(i));a.setAttribute('cy',Y(f[i]));b.setAttribute('cx',X(i));b.setAttribute('cy',Y(s[i]));
+    tip.innerHTML='<div><b>End of minute '+(i+1)+'</b></div><div><span class="dot" style="background:var(--fixed)"></span>Fixed: '+f[i]+' waiting</div><div><span class="dot" style="background:var(--smart)"></span>Smart: '+s[i]+' waiting</div>';
+    tip.style.display='block';
+    const px=X(i)/W*r.width,tw=tip.offsetWidth;
+    tip.style.left=Math.max(0,Math.min(r.width-tw,px+(px>r.width/2?-tw-12:12)))+'px'; tip.style.top='8px';
+  };
+  const hit=svg.querySelector('#hit');
+  hit.addEventListener('pointermove',move); hit.addEventListener('pointerdown',move);
+  hit.addEventListener('pointerleave',()=>{hov.style.display='none';tip.style.display='none';});
+}
+
+/* ---------- copy table ---------- */
+$('copy').addEventListener('click',()=>{
+  const F=state.F,S=state.S,sum=a=>a.reduce((x,y)=>x+y,0);
+  const rows=[['Minute'].concat(ROAD_KEYS.map(k=>'Fixed '+k),['Fixed total'],ROAD_KEYS.map(k=>'Smart '+k),['Smart total'])];
+  F.minuteQ.forEach((q,m)=>rows.push([m+1].concat(q,[sum(q)],S.minuteQ[m],[sum(S.minuteQ[m])])));
+  const text=rows.map(r=>r.join('\t')).join('\n');
+  const fallback=()=>{const b=$('csvBox');b.classList.remove('hide');b.value=text;b.select();$('copyMsg').textContent='Select all the text below, copy it, then paste into a sheet.';};
+  try{navigator.clipboard.writeText(text).then(()=>{$('copyMsg').textContent='Copied. Paste into cell A1 of a sheet.';},fallback);}catch(e){fallback();}
+});
+
+/* ---------- spreadsheet (.xlsx built in the page, no library needed) ---------- */
+function showDone(on){$('done').classList.toggle('hide',!on);}
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0;}
+function zipStore(files){
+  const enc=new TextEncoder(),parts=[],central=[];let off=0,cd=0;
+  files.forEach(f=>{
+    const nm=enc.encode(f.name),data=enc.encode(f.text),crc=crc32(data),sz=data.length;
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(6,0x0800,true);lh.setUint16(8,0,true);lh.setUint16(10,0,true);lh.setUint16(12,33,true);
+    lh.setUint32(14,crc,true);lh.setUint32(18,sz,true);lh.setUint32(22,sz,true);lh.setUint16(26,nm.length,true);lh.setUint16(28,0,true);
+    parts.push(new Uint8Array(lh.buffer),nm,data);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);ch.setUint16(8,0x0800,true);ch.setUint16(10,0,true);ch.setUint16(12,0,true);ch.setUint16(14,33,true);
+    ch.setUint32(16,crc,true);ch.setUint32(20,sz,true);ch.setUint32(24,sz,true);ch.setUint16(28,nm.length,true);ch.setUint32(42,off,true);
+    central.push(new Uint8Array(ch.buffer),nm); cd+=46+nm.length; off+=30+nm.length+sz;
+  });
+  const end=new DataView(new ArrayBuffer(22));
+  end.setUint32(0,0x06054b50,true);end.setUint16(8,files.length,true);end.setUint16(10,files.length,true);end.setUint32(12,cd,true);end.setUint32(16,off,true);
+  const all=parts.concat(central,[new Uint8Array(end.buffer)]);
+  const out=new Uint8Array(all.reduce((s,p)=>s+p.length,0));let o=0;all.forEach(p=>{out.set(p,o);o+=p.length;});
+  return out;
+}
+const xesc=s=>String(s).replace(/[^\x09\x0A\x0D\x20-퟿-￼]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function colName(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
+function sheetXml(rows,widths){
+  let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">';
+  if(widths)x+='<cols>'+widths.map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols>';
+  x+='<sheetData>';
+  rows.forEach((r,ri)=>{x+='<row r="'+(ri+1)+'">';r.forEach((v,ci)=>{
+    if(v===''||v==null)return;const ref=colName(ci)+(ri+1);
+    x+=(typeof v==='number'&&isFinite(v))?'<c r="'+ref+'"><v>'+v+'</v></c>':'<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+xesc(v)+'</t></is></c>';
+  });x+='</row>';});
+  return x+'</sheetData></worksheet>';
+}
+function buildWorkbook(){
+  const F=state.F,S=state.S,sum=a=>a.reduce((x,y)=>x+y,0),r1=x=>Math.round(x*10)/10,rep=state.repeat;
+  const change=F.avgWait>0?(S.avgWait-F.avgWait)/F.avgWait*100:0;
+  const summary=[['Signal Lab results'],['Junction',$('jname').value||'4-way junction'],['Where the numbers come from',$('when').value],['Spreadsheet created',new Date().toLocaleString('en-IN')],[],
+    ['Settings'],['Run length (minutes)',T/60],['Cycle length (seconds)',CFG.cycle],['Green shared per cycle (seconds)',CFG.cycle-4*CFG.amber],['Amber after each green (seconds)',CFG.amber],
+    ['Fixed timer green per road (seconds)',F.greenLog[0][0]],['Smart signal minimum green (seconds)',CFG.gmin],['Smart signal maximum green (seconds)',CFG.gmax],['Random seed',state.seed],[],
+    ['Result','Fixed timer','Smart signal'],['Average wait per vehicle (seconds)',r1(F.avgWait),r1(S.avgWait)],['Longest queue on any road (vehicles)',Math.max.apply(null,F.maxQ),Math.max.apply(null,S.maxQ)],
+    ['Vehicles still waiting when the run ends',sum(F.stillWaiting),sum(S.stillWaiting)],['Vehicles cleared',sum(F.served),sum(S.served)],['Vehicles arrived',sum(F.vehicles),sum(S.vehicles)],[],
+    ['Change in average wait with the smart signal (%)',r1(change)]];
+  if(rep)summary.push(['Same test with 20 other random arrival patterns'],['Average change in wait (%)',r1(-rep.mean)],['Best case (%)',r1(-rep.max)],['Worst case (%)',r1(-rep.min)]);
+  summary.push([],['Negative change means vehicles waited less with the smart signal.']);
+  const roads=[['Road','Name','Count per 15 min','Vehicles arrived in 30 min','Average wait, fixed (s)','Average wait, smart (s)','Longest queue, fixed','Longest queue, smart','Still waiting, fixed','Still waiting, smart','Average green, fixed (s)','Average green, smart (s)']]
+    .concat(ROAD_KEYS.map((k,i)=>[k,state.names[i],state.counts[i],F.vehicles[i],r1(F.avgWaitRoad[i]),r1(S.avgWaitRoad[i]),F.maxQ[i],S.maxQ[i],F.stillWaiting[i],S.stillWaiting[i],r1(F.avgGreen[i]),r1(S.avgGreen[i])]));
+  const queues=[['Minute'].concat(ROAD_KEYS.map(k=>'Fixed '+k),['Fixed total'],ROAD_KEYS.map(k=>'Smart '+k),['Smart total'])]
+    .concat(F.minuteQ.map((q,m)=>[m+1].concat(q,[sum(q)],S.minuteQ[m],[sum(S.minuteQ[m])])));
+  const greens=[['Cycle','Starts at (min:sec)'].concat(ROAD_KEYS.map(k=>'Fixed '+k+' (s)'),ROAD_KEYS.map(k=>'Smart '+k+' (s)'))]
+    .concat(F.greenLog.map((g,c)=>[c+1,mmss(c*CFG.cycle)].concat(g,S.greenLog[c])));
+  const sheets=[['Summary',summary,[46,22,22]],['Roads',roads,[7,26,16,22,20,20,18,18,18,18,20,20]],['Queues by minute',queues,[9,9,9,9,9,12,9,9,9,9,12]],['Green per cycle',greens,[8,18,12,12,12,12,12,12,12,12]]];
+  const head='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const files=[
+    {name:'[Content_Types].xml',text:head+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+sheets.map((s,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('')+'</Types>'},
+    {name:'_rels/.rels',text:head+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
+    {name:'xl/workbook.xml',text:head+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+sheets.map((s,i)=>'<sheet name="'+s[0]+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+'</sheets></workbook>'},
+    {name:'xl/_rels/workbook.xml.rels',text:head+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((s,i)=>'<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join('')+'</Relationships>'}
+  ].concat(sheets.map((s,i)=>({name:'xl/worksheets/sheet'+(i+1)+'.xml',text:sheetXml(s[1],s[2])})));
+  return zipStore(files);
+}
+let dlCap=null;
+try{if(window.claude&&window.claude.use)window.claude.use('downloads').then(d=>{dlCap=d;},()=>{});}catch(e){}
+async function downloadSheet(){
+  const say=m=>document.querySelectorAll('[data-dlmsg]').forEach(x=>x.textContent=m);
+  let bytes;
+  try{bytes=buildWorkbook();}catch(e){say('Could not build the spreadsheet. Use "Copy table instead".');return;}
+  const slug=($('jname').value||'junction').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)||'junction';
+  const filename='signal-lab-'+slug+'.xlsx';
+  const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  if(dlCap){
+    try{await dlCap.save({filename:filename,data:blob});say('Saved '+filename+'.');}
+    catch(e){say(e&&e.code==='declined'?'Download cancelled.':'This view could not save the file. Use "Copy table instead".');}
+    return;
+  }
+  try{
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=filename;a.style.display='none';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    say('Download started: '+filename+'. If nothing was saved, use "Copy table instead".');
+  }catch(e){say('This browser blocked the download. Use "Copy table instead".');}
+}
+document.querySelectorAll('[data-dl]').forEach(b=>b.addEventListener('click',downloadSheet));
+window.__buildWorkbook=buildWorkbook;
+
+/* ---------- start ---------- */
+buildInputs(); markSource(); run();
+const mq=window.matchMedia('(prefers-color-scheme: dark)');
+if(mq.addEventListener)mq.addEventListener('change',()=>{renderStatic();renderResults();drawAll();});
+new MutationObserver(()=>{renderStatic();renderResults();drawAll();}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(drawAll);
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(renderResults,150);});
+if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches)setPlaying(true);
+})();
+</script>
+</body>
+</html>
